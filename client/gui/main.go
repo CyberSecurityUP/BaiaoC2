@@ -1,13 +1,17 @@
 package gui
 
 import (
+	"encoding/json"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
+	"log"
 )
+
+var _ = json.Marshal // Isso engana o compilador dizendo que `json` está sendo usado
 
 // Listener representa um listener no BaiaoC2
 type Listener struct {
@@ -22,26 +26,87 @@ type Listener struct {
 // Lista de listeners (inicia vazia)
 var listeners = []Listener{}
 
-// Start inicia a interface gráfica do BaiaoC2
+// **Start inicia a interface gráfica do BaiaoC2**
 func Start() {
 	// Inicializar o aplicativo
 	myApp := app.New()
 	myApp.Settings().SetTheme(theme.DarkTheme())
 	myWindow := myApp.NewWindow("BaiaoC2 - Command & Control")
 
-	// Tabela de Listeners
+	// **Inicializa os logs**
+	logs := widget.NewMultiLineEntry()
+	logs.Disable()
+	logs.SetText("[+] Event Viewer Logs\n")
+
+	// **Abas principais**
+	tabs := container.NewAppTabs()
+
+	// **Aba de Listeners**
+	listenerTable := createListenerTable(myWindow) // Corrigido: Passa `myWindow`, não `logs`
+	tabs.Append(container.NewTabItem("Listeners", listenerTable))
+
+	// **Aba de Session View**
+	sessionView := widget.NewLabel("Session View Content")
+	tabs.Append(container.NewTabItem("Session View", sessionView))
+
+	// **Aba de Teamserver Chat**
+	teamserverChat := widget.NewMultiLineEntry()
+	teamserverChat.SetText("Teamserver Chat Content")
+	teamserverChat.Disable()
+	tabs.Append(container.NewTabItem("Teamserver Chat", container.NewScroll(teamserverChat)))
+
+	// **Aba de Loot**
+	loot := widget.NewLabel("Loot Content")
+	tabs.Append(container.NewTabItem("Loot", loot))
+
+	// **Aba de Event Viewer**
+	tabs.Append(container.NewTabItem("Event Viewer", container.NewScroll(logs)))
+
+	// **Menu no topo com submenus corrigidos**
+	menu := fyne.NewMainMenu(
+		fyne.NewMenu("View",
+			fyne.NewMenuItem("Listeners", func() { tabs.SelectTabIndex(0) }),
+			fyne.NewMenuItem("Session View", func() { tabs.SelectTabIndex(1) }),
+			fyne.NewMenuItem("Teamserver Chat", func() { tabs.SelectTabIndex(2) }),
+			fyne.NewMenuItem("Loot", func() { tabs.SelectTabIndex(3) }),
+			fyne.NewMenuItem("Event Viewer", func() { tabs.SelectTabIndex(4) }),
+		),
+		fyne.NewMenu("Attack",
+			fyne.NewMenuItem("Generate Payload", func() { showMessage(myWindow, "Generate Payload feature coming soon!") }),
+			fyne.NewMenuItem("Upload Payload", func() { showMessage(myWindow, "Upload Payload feature coming soon!") }),
+			fyne.NewMenuItem("Execute Task", func() { showMessage(myWindow, "Execute Task feature coming soon!") }),
+		),
+		fyne.NewMenu("Scripts",
+			fyne.NewMenuItem("Manage Scripts", func() { showMessage(myWindow, "Manage Scripts feature coming soon!") }),
+			fyne.NewMenuItem("Run Script", func() { showMessage(myWindow, "Run Script feature coming soon!") }),
+		),
+		fyne.NewMenu("Help",
+			fyne.NewMenuItem("Documentation", func() { showMessage(myWindow, "Documentation coming soon!") }),
+			fyne.NewMenuItem("About", func() {
+				dialog.ShowInformation("About BaiaoC2", "BaiaoC2 - Version 1.0\nDeveloped for advanced C2 operations.", myWindow)
+			}),
+		),
+	)
+	myWindow.SetMainMenu(menu)
+
+	// **Configurar janela principal**
+	myWindow.SetContent(tabs)
+	myWindow.Resize(fyne.NewSize(1280, 720))
+	myWindow.ShowAndRun()
+}
+
+// **Cria a tabela de listeners**
+func createListenerTable(window fyne.Window) *fyne.Container {
 	listenerTable := widget.NewTable(
-		func() (int, int) { return len(listeners) + 1, 6 }, // +1 para cabeçalhos
+		func() (int, int) { return len(listeners) + 1, 6 },
 		func() fyne.CanvasObject { return widget.NewLabel("") },
 		func(id widget.TableCellID, cell fyne.CanvasObject) {
 			label := cell.(*widget.Label)
 			if id.Row == 0 {
-				// Cabeçalhos da tabela
 				headers := []string{"Name", "Protocol", "Host", "PortBind", "PortConn", "Status"}
 				label.SetText(headers[id.Col])
 				label.TextStyle = fyne.TextStyle{Bold: true}
 			} else {
-				// Dados dos listeners
 				listener := listeners[id.Row-1]
 				switch id.Col {
 				case 0:
@@ -60,6 +125,7 @@ func Start() {
 			}
 		},
 	)
+
 	listenerTable.SetColumnWidth(0, 150)
 	listenerTable.SetColumnWidth(1, 120)
 	listenerTable.SetColumnWidth(2, 200)
@@ -67,35 +133,15 @@ func Start() {
 	listenerTable.SetColumnWidth(4, 100)
 	listenerTable.SetColumnWidth(5, 80)
 
-	// Funções dos Botões
-	addButton := widget.NewButton("Add", func() { showAddDialog(myWindow, listenerTable) })
-	removeButton := widget.NewButton("Remove", func() { removeListener(myWindow, listenerTable) })
+	// **Botão para adicionar listeners**
+	addButton := widget.NewButton("Add Listener", func() {
+		showAddDialog(window, listenerTable) // Certifique-se de passar `window`
+	})
 
-	// Logs no painel lateral
-	eventLogs := widget.NewMultiLineEntry()
-	eventLogs.SetText("[+] Event Viewer Logs\n")
-	eventLogs.Disable()
-
-	// Rodapé (Status Bar)
-	statusBar := widget.NewLabel("Status: Connected to Teamserver")
-
-	// Layout Principal
-	buttons := container.NewHBox(addButton, removeButton)
-	mainContent := container.NewBorder(
-		container.NewVBox(listenerTable, buttons), // Parte central
-		statusBar,                                // Rodapé
-		nil,                                      // Sem menu lateral esquerdo
-		eventLogs,                                // Logs à direita
-		nil,                                      // Sem cabeçalho adicional
-	)
-
-	// Configurar janela principal
-	myWindow.SetContent(mainContent)
-	myWindow.Resize(fyne.NewSize(1280, 720))
-	myWindow.ShowAndRun()
+	return container.NewBorder(nil, addButton, nil, nil, listenerTable)
 }
 
-// showAddDialog exibe o diálogo para adicionar listeners
+// **Exibe o diálogo para adicionar listeners**
 func showAddDialog(window fyne.Window, table *widget.Table) {
 	nameEntry := widget.NewEntry()
 	protocolEntry := widget.NewEntry()
@@ -111,6 +157,12 @@ func showAddDialog(window fyne.Window, table *widget.Table) {
 		widget.NewFormItem("PortConn", portConnEntry),
 	)
 
+	// **Evita erro caso a janela seja `nil`**
+	if window == nil {
+		log.Println("[!] Erro: A janela principal não foi inicializada corretamente.")
+		return
+	}
+
 	dialog.ShowCustomConfirm("Add Listener", "Add", "Cancel", form, func(confirmed bool) {
 		if confirmed {
 			newListener := Listener{
@@ -123,20 +175,11 @@ func showAddDialog(window fyne.Window, table *widget.Table) {
 			}
 			listeners = append(listeners, newListener)
 			table.Refresh()
-			dialog.ShowInformation("Success", "Listener added successfully!", window)
 		}
-	}, window)
+	}, window) // Certifique-se de passar a `window` corretamente
 }
 
-// removeListener remove o listener selecionado
-func removeListener(window fyne.Window, table *widget.Table) {
-	if len(listeners) == 0 {
-		dialog.ShowInformation("Error", "No listeners to remove.", window)
-		return
-	}
-
-	// Remove o último listener por simplicidade
-	listeners = listeners[:len(listeners)-1]
-	table.Refresh()
-	dialog.ShowInformation("Success", "Listener removed successfully!", window)
+// **Exibe mensagens temporárias**
+func showMessage(window fyne.Window, message string) {
+	dialog.ShowInformation("Info", message, window)
 }
