@@ -1,0 +1,24 @@
+{
+  "name": "BaiaoC2",
+  "version": "1.0",
+  "description": "BaiaoC2 - Command and Control Framework",
+  "listeners": [
+    {
+      "type": "TCP",
+      "host": "0.0.0.0",
+      "port": 8080,
+      "encryption": "AES-256",
+      "key": "supersecretkey"
+    }
+  ],
+  "implants": {
+    "sleep_time": 10,
+    "jitter": 0.2,
+    "max_retries": 3,
+    "retry_interval": 5
+  },
+  "logging": {
+    "level": "info",
+    "file": "baiao.log"
+  }
+}
