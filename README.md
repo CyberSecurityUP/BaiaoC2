@@ -98,12 +98,3 @@ We welcome contributions! Feel free to open issues or submit PRs to help improve
 ## 📄 **License**
 This project is licensed under the [MIT License](LICENSE).
 ```
-
----
-
-### **Changes Made**
-1. Translated the content into English.
-2. Updated the repository link and username to **CyberSecurityUP**.
-3. Kept the same structure with relevant features and instructions.
-
-Let me know if you need further adjustments or additional details! 🚀
